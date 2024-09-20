@@ -29,7 +29,7 @@ def store_data():
         
     print("Proposal_post_live DB created successfully")
 
-def store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, proposal_post_live):
+def store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, trade_type, proposal_post_live):
     new_data = {
         "coin" : coin,
         "post_id": post_id,
@@ -37,6 +37,7 @@ def store_into_live(coin, post_id, trade_id, description, buying_price, buying_t
         "buying_price": buying_price,
         "buying_time": buying_time,
         "stop_loss_price": stop_loss_price,
+        "type" : trade_type,
         "status" : "unsold"
         }
     
@@ -64,11 +65,11 @@ def trigger_trade(new_row_df):
             
             if sentiment == 'positive' and sentimnet_score >= 0.7:
                 buying_price, stop_loss_price, trade_id = buy_call(coin)
-                proposal_post_live = store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, proposal_post_live)        
+                proposal_post_live = store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "call", proposal_post_live)        
  
             if sentiment == 'negative' and sentimnet_score >= 0.7:
                 buying_price, stop_loss_price = buy_put(coin)
-                proposal_post_live = store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, proposal_post_live)        
+                proposal_post_live = store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "put", proposal_post_live)        
 
                 
             new_row = {
@@ -84,15 +85,22 @@ def trigger_trade(new_row_df):
         
         with open(config['data_dir'] + 'proposal_post_live.json', 'w') as json_file:
             json.dump(proposal_post_live, json_file, indent=4)    
-            
 
-def scan_data():
+def close_firebase_client(app):
+    firebase_admin.delete_app(app)
+    print("Firebase client closed successfully.")
+
+if __name__== "__main__":
+    db, app = create_firebase_client()
+    proposal_dict = download_and_save_proposal(db)
+    start_time = store_into_db(proposal_dict)
     while True:
-        proposal_dict = download_and_save_proposal()
+        proposal_dict = download_and_save_proposal(db)
         new_row_df = check_new_post(proposal_dict)
         trigger_trade(new_row_df)
         
         time.sleep(5*60)
      
-        
+close_firebase_client(app)
+
         

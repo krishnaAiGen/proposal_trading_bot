@@ -17,10 +17,12 @@ with open('config.json', 'r') as json_file:
 
 def create_firebase_client():
     cred = credentials.Certificate(config["firebase_cred"])
-    firebase_admin.initialize_app(cred)
+    app = firebase_admin.initialize_app(cred)
     
     db = firestore.client()
-    return db 
+    
+    return db, app  # Return both the Firestore client and app instance
+
 
 def clean_content(html_text):
     # Parse the HTML content using BeautifulSoup
@@ -32,6 +34,7 @@ def clean_content(html_text):
     return clean_text
 
 def download_and_save_proposal(db):
+    print("#########Downloading intial proposals###########")
     collection_name = 'ai_posts'
     collection_ref = db.collection(collection_name)    
     docs = collection_ref.stream()
@@ -39,7 +42,6 @@ def download_and_save_proposal(db):
     protocol_list = []
     docs_list = []
     for doc in docs:
-        print(doc.id)
         protocol = str(doc.id).split('--')[0]
         if protocol not in protocol_list:
             protocol_list.append(protocol)
@@ -66,7 +68,7 @@ def download_and_save_proposal(db):
                     discourse_df = pd.concat([discourse_df, temp_df], ignore_index=True)
                     
         proposal_dict[key] = discourse_df
-                        
+    
     return proposal_dict
 
 def check_new_post(proposal_dict):
@@ -75,7 +77,7 @@ def check_new_post(proposal_dict):
     columns = ["post_id", "coin", "description"]
     new_row_df = pd.DataFrame(columns = columns)
     
-    for coin_df in proposal_dict:
+    for key, coin_df in proposal_dict.items():
         for index, row in coin_df.iterrows():
             post_id = row['post_id']
             if post_id not in proposal_post_id:
