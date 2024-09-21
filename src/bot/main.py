@@ -92,6 +92,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             }
         proposal_post_id = pd.concat([proposal_post_id, pd.DataFrame([new_row1])], ignore_index=True)
         proposal_post_id.to_csv(config['data_dir'] + '/proposal_post_id.csv')  
+        
 
 def close_firebase_client(app):
     firebase_admin.delete_app(app)

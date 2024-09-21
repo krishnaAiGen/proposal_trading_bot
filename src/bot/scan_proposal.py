@@ -116,6 +116,7 @@ def store_into_db(proposal_dict):
 
     return start_time
 
+
     
     
     
