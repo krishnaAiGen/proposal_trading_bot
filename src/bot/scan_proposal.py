@@ -33,7 +33,24 @@ def clean_content(html_text):
     
     return clean_text
 
-def download_and_save_proposal(db):
+def add_dummy(proposal_dict):
+    temp_df = proposal_dict['0xprotocol']
+    temp_df.columns
+    new_row = {
+        'protocol' : 'ss',
+        'post_id' : 'ss',
+        'timestamp' : '2024-11-12',
+        'title' : 'ss',
+        'description' : 'The DLT Science Foundation (DSF) has announced its support for the launch of the MiCA Crypto Alliance, with Hedera, Ripple, and Aptos Foundation as founding members. This industry association aims to streamline and enhance compliance with the European Union’s Markets in Crypto-Assets (MiCA) regulation, fostering a sustainable and compliant crypto ecosystem. The MiCA regulation, set to be fully applicable by the end of this year, provides a comprehensive framework for the crypto market, ensuring transparency, consumer protection, and market integrity. The MiCA Crypto Alliance will coordinate compliance efforts among leading blockchain projects and Crypto-Asset Service Providers (CASPs), promoting uniformity and standardisation in sustainability disclosures and regulatory compliance.'
+        }
+    
+    temp_df = pd.concat([temp_df, pd.DataFrame([new_row])], ignore_index=True)
+    
+    proposal_dict['0xprotocol'] = temp_df
+    
+    return proposal_dict
+
+def download_and_save_proposal(db, counter):
     print("#########Downloading intial proposals###########")
     collection_name = 'ai_posts'
     collection_ref = db.collection(collection_name)    
@@ -69,9 +86,13 @@ def download_and_save_proposal(db):
                     
         proposal_dict[key] = discourse_df
     
+    #add dummy data
+    if counter >= 1:
+       proposal_dict = add_dummy(proposal_dict)
+    
     return proposal_dict
 
-def check_new_post(proposal_dict):
+def check_new_post(proposal_dict):    
     proposal_post_id = list(pd.read_csv(config["data_dir"] + '/proposal_post_id.csv')['post_id'])
     
     columns = ["post_id", "coin", "description"]
@@ -83,17 +104,18 @@ def check_new_post(proposal_dict):
             if post_id not in proposal_post_id:
                 coin = post_id.split("--")[0]
                 description = row['description']
+                timestamp = row['timestamp']
                 
                 new_row = {
+                    "timestamp" : timestamp,
                     "post_id" : post_id,
                     "coin" : coin,
                     "description": description
                     }
                 
-                new_row_df = new_row_df.concat([new_row_df, pd.DataFrame(new_row)], ignore_index=True)
+                new_row_df = pd.concat([new_row_df, pd.DataFrame([new_row])], ignore_index=True)
 
     return new_row_df
-
 
 """
 Sharing initial dumped data into db.
