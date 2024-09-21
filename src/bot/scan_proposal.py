@@ -92,8 +92,8 @@ def download_and_save_proposal(db, counter):
     
     return proposal_dict
 
-def check_new_post(proposal_dict):    
-    proposal_post_id = list(pd.read_csv(config["data_dir"] + '/proposal_post_id.csv')['post_id'])
+def check_new_post(proposal_dict):        
+    proposal_post_id = list(pd.read_csv(config["data_dir"] + '/proposal_post_id.csv', index_col=0)['post_id'])
     
     columns = ["post_id", "coin", "description"]
     new_row_df = pd.DataFrame(columns = columns)

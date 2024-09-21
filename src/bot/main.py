@@ -51,8 +51,8 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
     trade_id = 0
     
     if len(new_row_df) != 0:
-        proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv')
-        proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv')
+        proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv', index_col=0)
+        proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv', index_col=0)
         
         with open(config['data_dir'] + '/proposal_post_live.json', 'r') as json_file:
             proposal_post_live = json.load(json_file)
