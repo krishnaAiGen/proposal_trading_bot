@@ -1,0 +1,1 @@
+export const STOP_LOSS_PERCENTAGE = 2;

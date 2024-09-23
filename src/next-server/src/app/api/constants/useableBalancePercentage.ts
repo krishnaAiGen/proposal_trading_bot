@@ -1,0 +1,1 @@
+export const USEABLE_BALANCE_PERCENTAGE = 90;
