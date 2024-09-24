@@ -19,6 +19,7 @@ export async function buy({ asset, sentiment }: { asset: string; sentiment: ESen
 
   try {
     await binanceClient.futuresLeverage({ symbol: asset, leverage: LEVERAGE_MULTIPLIER });
+    await binanceClient.futuresMarginType({ symbol: asset, marginType: "CROSSED" });
 
     // Determine order side based on sentiment
     const side = sentiment === ESentiment.BULLISH ? "BUY" : "SELL";
