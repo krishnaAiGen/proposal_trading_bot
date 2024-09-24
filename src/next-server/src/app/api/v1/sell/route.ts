@@ -19,7 +19,9 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     throw new APIError(ERROR_CODES.BAD_REQUEST, StatusCodes.BAD_REQUEST, "Invalid exchange in request body");
   }
 
-  const sellResponse = await import(`./api-utils/exchanges/${exchange}/sell`).then(({ sell }) => sell({ asset }));
+  const sellResponse = await import(`@/app/api/api-utils/exchanges/${exchange}/sell`).then(({ sell }) =>
+    sell({ asset })
+  );
 
   if (!sellResponse) {
     throw new APIError(ERROR_CODES.INTERNAL_SERVER_ERROR, StatusCodes.INTERNAL_SERVER_ERROR, "Error selling asset");

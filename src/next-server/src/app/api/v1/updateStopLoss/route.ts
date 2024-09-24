@@ -27,7 +27,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     throw new APIError(ERROR_CODES.BAD_REQUEST, StatusCodes.BAD_REQUEST, "Invalid sentiment in request body");
   }
 
-  const updateStopLossResponse = await import(`./api-utils/exchanges/${exchange}/updateStopLoss`).then(
+  const updateStopLossResponse = await import(`@/app/api/api-utils/exchanges/${exchange}/updateStopLoss`).then(
     ({ updateStopLoss }) => updateStopLoss({ asset, stopLossOrderId, sentiment })
   );
 

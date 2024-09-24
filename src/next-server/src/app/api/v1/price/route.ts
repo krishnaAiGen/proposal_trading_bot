@@ -20,7 +20,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     throw new APIError(ERROR_CODES.BAD_REQUEST, StatusCodes.BAD_REQUEST, "Invalid exchange in request query params");
   }
 
-  const price = (await import(`./api-utils/exchanges/${exchange}/price`).then(({ price }) => price({ asset }))) || "";
+  const price =
+    (await import(`@/app/api/api-utils/exchanges/${exchange}/price`).then(({ price }) => price({ asset }))) || "";
 
   if (!price) {
     throw new APIError(

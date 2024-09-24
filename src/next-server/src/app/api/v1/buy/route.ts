@@ -23,7 +23,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     throw new APIError(ERROR_CODES.BAD_REQUEST, StatusCodes.BAD_REQUEST, "Invalid sentiment in request body");
   }
 
-  const buyResponse = await import(`./api-utils/exchanges/${exchange}/buy`).then(({ buy }) =>
+  const buyResponse = await import(`@/app/api/api-utils/exchanges/${exchange}/buy`).then(({ buy }) =>
     buy({ asset, sentiment })
   );
 
