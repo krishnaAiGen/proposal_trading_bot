@@ -14,12 +14,13 @@ export async function buy({ asset, sentiment }: { asset: string; sentiment: ESen
   );
 
   const stableAssetBalance = await getAssetBalance({ asset: STABLE_ASSET });
+  console.log(`Stable asset balance: ${stableAssetBalance}`);
 
   const quantity = (parseFloat(stableAssetBalance) * (USEABLE_BALANCE_PERCENTAGE / 100)).toString();
+  console.log(`Quantity: ${quantity}`);
 
   try {
     await binanceClient.futuresLeverage({ symbol: asset, leverage: LEVERAGE_MULTIPLIER });
-    await binanceClient.futuresMarginType({ symbol: asset, marginType: "CROSSED" });
 
     // Determine order side based on sentiment
     const side = sentiment === ESentiment.BULLISH ? "BUY" : "SELL";
