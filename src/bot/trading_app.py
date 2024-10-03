@@ -3,6 +3,7 @@ import threading
 from main import *
 from sell import *
 
+
 # First loop function with a 5-second sleep interval
 def scan_proposals():
     counter = 0
