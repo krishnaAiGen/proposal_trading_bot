@@ -6,30 +6,35 @@ Created on Wed Oct  2 15:23:33 2024
 @author: krishnayadav
 """
 
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
+import requests
+import json
 
-# Slack bot token from your app
-slack_token = 'xoxb-your-slack-bot-token'
+# Load configuration from the config.json file
+with open('config.json', 'r') as json_file:
+    config = json.load(json_file)
 
-# Initialize the Slack client
-client = WebClient(token=slack_token)
-
-# Define the channel ID or name (e.g., '#general')
-channel_id = '#your-channel-id'
+# Extract webhook URL from config
+webhook_url = config['webhook_url']
 
 def post_to_slack(message):
+    # Create the payload to send to Slack
+    payload = {
+        "text": message  # Message to send to Slack
+    }
+
     try:
-        response = client.chat_postMessage(
-            channel=channel_id,
-            text=message
-        )
-        print(f"Message posted successfully: {response['ts']}")
-    except SlackApiError as e:
-        print(f"Error posting message: {e.response['error']}")
+        # Send a POST request to the Slack webhook URL
+        response = requests.post(webhook_url, json=payload)
 
-# Your condition
-condition_met = True  # Replace this with your actual condition logic
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("Message posted successfully")
+        else:
+            print(f"Failed to post message: {response.status_code}, {response.text}")
+    
+    except Exception as e:
+        print(f"Error posting message: {e}")
 
-if condition_met:
-    post_to_slack("The condition has been met!")
+
+
+

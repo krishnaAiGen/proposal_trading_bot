@@ -6,7 +6,7 @@ class FinBERTSentiment:
     def __init__(self):
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
-        self.model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")        
+        self.model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")    
         self.model.to(self.device)
 
     def predict(self, text):
@@ -24,3 +24,4 @@ class FinBERTSentiment:
         sentiment = labels[predicted_class]
         
         return sentiment, max(probabilities)
+

@@ -108,7 +108,26 @@ def update_stop_loss(trade_type, symbol, previous_stop_loss_orderId):
     
     return stop_loss_order['orderId'], stopPrice
 
-def create_buy_order_long(coin):
+def get_precision1(buying_price):
+    if float(buying_price) <= 10:
+        precision1 = 2
+    
+    elif float(buying_price) <=50:
+        precision1 = 1  
+        
+    else:
+        precision1 = 0 
+    
+    return precision1
+    
+
+def create_buy_order_long(coin, target_price):
+    #####-----------
+    # coin = 'uniswap'
+    # target_price = 0.02
+    ####-------------
+    
+    
     symbol = coin_dict[coin]
     quantity = get_quantity(symbol)    
 
@@ -133,7 +152,9 @@ def create_buy_order_long(coin):
     
     #placing stop loss order
     stop_loss_percent = 2
-    stopPrice = int(float(buying_price) - ((stop_loss_percent/100) * float(buying_price)))
+    stopPrice = float(float(buying_price) - ((stop_loss_percent/100) * float(buying_price)))
+    precision1 = get_precision1(buying_price)
+    stopPrice = round(stopPrice, precision1)
     
     if market_buy_order:
         try:
@@ -153,12 +174,37 @@ def create_buy_order_long(coin):
         
         stop_loss_orderID = stop_loss_order['orderId']
     
-    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID
+    if market_buy_order:
+        target_profit_price = float(buying_price) + (abs(target_price) * float(buying_price))
+        target_profit_price = round(target_profit_price, precision1)        
+            
 
+        # Create a limit order for target profit
+        target_profit_order = client.futures_create_order(
+            symbol=symbol,
+            side='SELL',
+            type='LIMIT',
+            price=target_profit_price,
+            quantity=quantity,  # Specify the quantity to sell
+            timeInForce='GTC'  # Good Till Canceled
+        )
+        print("Target profit order placed successfully.")
+        print("Order Details:", target_profit_order)
+    
+    target_order_id = target_profit_order['orderId']
+    target_price = target_profit_order['price']
+    
+    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID, target_order_id, target_price
 
+    #placing a target price
+    
 
 def create_buy_order_short(coin):
-    # coin = 'btc'
+    #####-----------
+    # coin = 'uniswap'
+    # target_price = 0.02
+    ####-------------
+    
     symbol = coin_dict[coin]
     quantity = get_quantity(symbol)
     
@@ -184,7 +230,9 @@ def create_buy_order_short(coin):
     
     #placing stop loss order
     stop_loss_percent = 2
-    stopPrice = int(float(buying_price) + ((stop_loss_percent/100) * float(buying_price)))
+    stopPrice = float(float(buying_price) + ((stop_loss_percent/100) * float(buying_price)))
+    precision1 = get_precision1(buying_price)
+    stopPrice = round(stopPrice, precision1)
     
     if market_buy_order:
         try:
@@ -204,7 +252,26 @@ def create_buy_order_short(coin):
         
         stop_loss_orderID = stop_loss_order['orderId']
     
-    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID
+    if market_buy_order:
+        target_profit_price = float(buying_price) - (abs(target_price) * float(buying_price))
+        target_profit_price = round(target_profit_price, precision1)
+
+        # Create a limit order for target profit
+        target_profit_order = client.futures_create_order(
+            symbol=symbol,
+            side='BUY',
+            type='LIMIT',
+            price=target_profit_price,
+            quantity=quantity,  # Specify the quantity to sell
+            timeInForce='GTC'  # Good Till Canceled
+        )
+        print("Target profit order placed successfully.")
+        print("Order Details:", target_profit_order)
+    
+    target_order_id = target_profit_order['orderId']
+    target_price = target_profit_order['price']
+    
+    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID, target_order_id, target_price
 
 def check_order_status(symbol, order_id):
     try:
