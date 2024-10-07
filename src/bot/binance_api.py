@@ -32,8 +32,9 @@ def get_current_price(symbol):
     return ticker['price']
 
 def get_quantity(symbol):
-    balance = get_balance_future() / 4
+    balance = get_balance_future()
     # balance = get_balance_future()
+    print("Balance is ", balance)
 
         
     current_price = get_current_price(symbol)
@@ -129,7 +130,8 @@ def create_buy_order_long(coin, target_price):
     
     
     symbol = coin_dict[coin]
-    quantity = get_quantity(symbol)    
+    quantity = get_quantity(symbol)   
+    print("Bought Quantity", quantity)
 
     try:
         # result = client.futures_change_leverage(symbol=symbol, leverage = 5)
@@ -194,7 +196,7 @@ def create_buy_order_long(coin, target_price):
     target_order_id = target_profit_order['orderId']
     target_price = target_profit_order['price']
     
-    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID, target_order_id, target_price
+    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID, target_order_id, target_price, quantity
 
     #placing a target price
     
@@ -207,6 +209,8 @@ def create_buy_order_short(coin):
     
     symbol = coin_dict[coin]
     quantity = get_quantity(symbol)
+    print("Bought Quantity", quantity)
+
     
     try:
         # Create a stop-loss order
@@ -271,7 +275,7 @@ def create_buy_order_short(coin):
     target_order_id = target_profit_order['orderId']
     target_price = target_profit_order['price']
     
-    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID, target_order_id, target_price
+    return buying_price, market_buy_order['orderId'], stopPrice, stop_loss_orderID, target_order_id, target_price, quantity
 
 def check_order_status(symbol, order_id):
     try:

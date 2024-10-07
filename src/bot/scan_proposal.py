@@ -49,7 +49,7 @@ def download_and_save_proposal(db):
             
     proposal_dict = {}
     for key in protocol_list:
-        discourse_df = pd.DataFrame(columns = ['protocol', 'post_id', 'timestamp', 'title', 'description'])    
+        discourse_df = pd.DataFrame(columns = ['protocol', 'post_id', 'timestamp', 'title', 'description', "discussion_link"])    
         
         for doc in docs_list:   
             if doc['post_type'] == 'snapshot_proposal':
@@ -61,7 +61,12 @@ def download_and_save_proposal(db):
                     title = doc['title']
                     description = clean_content(doc['description'])
                     
-                    df_row = [protocol, post_id, timestamp, title, description]
+                    try:
+                        discussion_link = doc['discussion_link']
+                    except Exception as e:
+                        discussion_link = ''
+                    
+                    df_row = [protocol, post_id, timestamp, title, description, discussion_link]
                     
                     temp_df = pd.DataFrame([df_row], columns=discourse_df.columns)
                     
@@ -84,11 +89,13 @@ def check_new_post(proposal_dict):
             if post_id not in proposal_post_id:
                 coin = post_id.split("--")[0]
                 description = row['description']
+                discussion_link = row['discussion_link']
                 
                 new_row = {
                     "post_id" : post_id,
                     "coin" : coin,
-                    "description": description
+                    "description": description,
+                    "discussion_link": discussion_link
                     }
                 
                 new_row_df = new_row_df.concat([new_row_df, pd.DataFrame(new_row)], ignore_index=True)

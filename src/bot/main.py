@@ -83,9 +83,12 @@ def check_trade_limit(coin):
         else:
             return True
 
-def send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price):
+def send_new_post_slack(coin, post_id, discussion_link, sentiment, sentimnet_score, target_price, summary):
+    if discussion_link == '' or discussion_link is None:
+        discussion_link = summary
+        
     message = {
-        "description" : description,
+        "discussion_link" : discussion_link,
         "coin" : coin,
         "post_id" : post_id,
         "sentiment" : sentiment,
@@ -93,19 +96,25 @@ def send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, 
         "target_percent" : target_price
         }
     
-    post_to_slack(str(message))
+    # post_to_slack(str(message))
+    post_to_slack(message)
     print("Posted to slack", message)
 
-def send_trade_info_slack(coin, trade_type, buying_price, stop_loss_price, targetPrice):
+def send_trade_info_slack(coin, trade_type, buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity):
     message = {
         "coin" : coin,
         "trade_type": trade_type,
         "buying_price" : buying_price,
         "stop_loss_price" : stop_loss_price,
-        "target_price" : targetPrice
+        "target_price" : targetPrice,
+        "trade_id": trade_id,
+        "stop_loss_orderID": stop_loss_orderID,
+        "target_orderId" : target_orderId,
+        "quantity" : quantity
         }
     
-    post_to_slack(str(message))
+    # post_to_slack(str(message))
+    post_to_slack(message)
     print("Posted to slack", message)
 
 def predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto_score):
@@ -131,6 +140,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             post_id = row['post_id']
             description = row['description']
             timestamp = row['timestamp']
+            discussion_link = row['discussion_link']
             
             summary = summary_obj.summarize_text(row['description'])
             
@@ -148,16 +158,16 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 bullish_predictor = BullishSentimentPredictor(config['bullish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bullish_predictor.predict(summary)['predicted_label']]
                 
-                send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price)
+                send_new_post_slack(coin, post_id, discussion_link, sentiment, sentimnet_score, target_price, summary)
                 
                 check_status = check_trade_limit(coin)
                 if check_status == True:
-                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice = create_buy_order_long(coin, target_price)
+                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice, quantity = create_buy_order_long(coin, target_price)
                     buying_time = format_time_utc()
                     print("---------------TRADE BOUGHT---------------------")
                     
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "long", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
-                    send_trade_info_slack(coin, "Long", buying_price, stop_loss_price, targetPrice)
+                    send_trade_info_slack(coin, "Long", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
                     
             if sentiment == 'negative' and sentimnet_score >= 0.75:
                 #making an object for bullish and bearish price prediction
@@ -169,12 +179,12 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 
                 check_status = check_trade_limit(coin)
                 if check_status == True:
-                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice = create_buy_order_short(coin, target_price)
+                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice, quantity = create_buy_order_short(coin, target_price)
                     buying_time = format_time_utc()
                     print("---------------TRADE BOUGHT---------------------")
                     
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "short", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
-                    send_trade_info_slack(coin, "Short", buying_price, stop_loss_price, targetPrice)
+                    send_trade_info_slack(coin, "Short", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
 
                 
             new_row = {

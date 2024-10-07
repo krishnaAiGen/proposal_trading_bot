@@ -17,15 +17,18 @@ with open('config.json', 'r') as json_file:
 webhook_url = config['webhook_url']
 
 def post_to_slack(message):
+      # Convert message dictionary to a string with each key-value on a new line
+    formatted_message = "\n".join([f"{key}: {value}" for key, value in message.items()])
+    
     # Create the payload to send to Slack
     payload = {
-        "text": message  # Message to send to Slack
+        "text": formatted_message  # Message to send to Slack
     }
-
+    
     try:
         # Send a POST request to the Slack webhook URL
         response = requests.post(webhook_url, json=payload)
-
+    
         # Check if the request was successful
         if response.status_code == 200:
             print("Message posted successfully")
@@ -34,7 +37,25 @@ def post_to_slack(message):
     
     except Exception as e:
         print(f"Error posting message: {e}")
-
+        
+def post_error_to_slack(error_message):
+    payload = {
+        "text": error_message  # Message to send to Slack
+    }
+    
+    try:
+        # Send a POST request to the Slack webhook URL
+        response = requests.post(webhook_url, json=payload)
+    
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("Message posted successfully")
+        else:
+            print(f"Failed to post message: {response.status_code}, {response.text}")
+    
+    except Exception as e:
+        print(f"Error posting message: {e}")
+        
 
 
 

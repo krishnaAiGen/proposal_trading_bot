@@ -57,8 +57,8 @@ def download_and_save_proposal(db):
             
     proposal_dict = {}
     for key in protocol_list:
-        discourse_df = pd.DataFrame(columns = ['protocol', 'post_id', 'timestamp', 'title', 'description'])    
-        
+        discourse_df = pd.DataFrame(columns = ['protocol', 'post_id', 'timestamp', 'title', 'description', 'discussion_link'])    
+    
         for doc in docs_list:   
             if doc['post_type'] == 'snapshot_proposal':
                 df_row = []
@@ -68,8 +68,9 @@ def download_and_save_proposal(db):
                     timestamp = doc['created_at']
                     title = doc['title']
                     description = clean_content(doc['description'])
+                    discussion_link = doc['discussion']
                     
-                    df_row = [protocol, post_id, timestamp, title, description]
+                    df_row = [protocol, post_id, timestamp, title, description, discussion_link]
                     
                     temp_df = pd.DataFrame([df_row], columns=discourse_df.columns)
                     

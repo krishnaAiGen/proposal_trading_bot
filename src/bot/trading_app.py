@@ -3,6 +3,11 @@ import threading
 from main import *
 from sell import *
 import sys
+from slack_bot import post_error_to_slack
+import warnings
+import traceback
+warnings.filterwarnings("ignore", category=UserWarning, module='bs4')
+
 
 
 description = """
@@ -84,9 +89,10 @@ def scan_proposals():
             
             new_row_df = {
                 'post_id': 'uniswap-1',
-                'coin' : 'uniswap',
+                'coin' : 'aave',
                 'timestamp': '2024-11-12',
-                'description': description
+                'description': description,
+                'discussion_link' : 'https://commonwealth.im/stride/discussion/25027-stride-tokenomics-update-allocate-protocol-fees-to-buy-back-and-burn-strd'
             }
             new_row_df = pd.DataFrame([new_row_df])   
             
@@ -96,6 +102,7 @@ def scan_proposals():
         
         except Exception as e:
             print("Error running scan proposal:", e)
+            post_error_to_slack(str(traceback.format_exc()))
         
         # Countdown timer for 2 minutes (120 seconds)
         countdown_time = 1 * 60  # 120 seconds
