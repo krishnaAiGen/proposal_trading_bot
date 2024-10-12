@@ -298,8 +298,6 @@ def check_order_status(symbol, order_id):
     
     # print(check_order_status('UNIUSDT', 22))
 
-   
-    
-
+# open_orders = client.futures_get_open_orders(symbol='AAVEUSDT')
 
     
