@@ -133,6 +133,10 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
         
         with open(config['data_dir'] + '/proposal_post_live.json', 'r') as json_file:
             proposal_post_live = json.load(json_file)
+        
+        live_post_ids = []
+        for key, live_trade in proposal_post_live.items():
+            live_post_ids.append(proposal_post_live[key]['post_id'])
 
         
         for index, row in new_row_df.iterrows():
@@ -158,7 +162,8 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 bullish_predictor = BullishSentimentPredictor(config['bullish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bullish_predictor.predict(summary)['predicted_label']]
                 
-                send_new_post_slack(coin, post_id, discussion_link, sentiment, sentimnet_score, target_price, summary)
+                if post_id not in live_post_ids:
+                    send_new_post_slack(coin, post_id, discussion_link, sentiment, sentimnet_score, target_price, summary)
                 
                 check_status = check_trade_limit(coin)
                 if check_status == True:
@@ -174,7 +179,8 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 bearish_predictor = BearishSentimentPredictor(config['bearish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bearish_predictor.predict(summary)['predicted_label']]
                 
-                send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price)
+                if post_id not in live_post_ids:
+                    send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price)
 
                 
                 check_status = check_trade_limit(coin)
