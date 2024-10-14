@@ -35,7 +35,7 @@ def get_quantity(symbol):
     balance = get_balance_future()
     # balance = get_balance_future()
     print("Balance is ", balance)
-    balance = 5000
+    balance = 1000
 
         
     current_price = get_current_price(symbol)
