@@ -35,10 +35,12 @@ def get_quantity(symbol):
     balance = get_balance_future()
     # balance = get_balance_future()
     print("Balance is ", balance)
+    balance = 5000
 
         
     current_price = get_current_price(symbol)
     quantity = 0.9 * ((balance * 3) / float(current_price))
+    print("quantity is ", quantity)
     # quantity = 0.9 * ((balance * 20) / float(current_price))
 
     coin_precision = precion_dict[symbol]
