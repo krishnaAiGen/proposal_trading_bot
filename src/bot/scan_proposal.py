@@ -51,26 +51,31 @@ def download_and_save_proposal(db):
     for key in protocol_list:
         discourse_df = pd.DataFrame(columns = ['protocol', 'post_id', 'timestamp', 'title', 'description', "discussion_link"])    
         
-        for doc in docs_list:   
-            if doc['post_type'] == 'snapshot_proposal':
-                df_row = []
-                if key in doc['house_id']:
-                    post_id = doc['id']
-                    protocol = key
-                    timestamp = doc['created_at']
-                    title = doc['title']
-                    description = clean_content(doc['description'])
-                    
-                    try:
-                        discussion_link = doc['discussion_link']
-                    except Exception as e:
-                        discussion_link = ''
-                    
-                    df_row = [protocol, post_id, timestamp, title, description, discussion_link]
-                    
-                    temp_df = pd.DataFrame([df_row], columns=discourse_df.columns)
-                    
-                    discourse_df = pd.concat([discourse_df, temp_df], ignore_index=True)
+        for doc in docs_list: 
+            try:
+                if doc['post_type'] == 'snapshot_proposal':
+                    df_row = []
+                    if key in doc['house_id']:
+                        post_id = doc['id']
+                        protocol = key
+                        timestamp = doc['created_at']
+                        title = doc['title']
+                        description = clean_content(doc['description'])
+                        
+                        try:
+                            discussion_link = doc['discussion_link']
+                        except Exception as e:
+                            discussion_link = ''
+                        
+                        df_row = [protocol, post_id, timestamp, title, description, discussion_link]
+                        
+                        temp_df = pd.DataFrame([df_row], columns=discourse_df.columns)
+                        
+                        discourse_df = pd.concat([discourse_df, temp_df], ignore_index=True)
+            
+            except Exception as e:
+                print(doc)
+                continue
                     
         proposal_dict[key] = discourse_df
     
@@ -126,10 +131,8 @@ def store_into_db(proposal_dict):
 
 
     
-    
-    
-    
-    
+doc = {'post_type': 'snapshot_proposal', 'description': '\n    This is a signaling proposal to update Stride’s tokenomics by introducing a buyback and burn mechanism for the STRD token using Stride protocol fees...\n    ', 'post_id': 'aave-test1', 'coin': 'aave', 'protocol': 'aave', 'title': 'simple title', 'discussion_link': 'https://commonwealth.im/stride/discussion/25027-stride-tokenomics-update-allocate-protocol-fees-to-buy-back-and-burn-strd', 'timestamp': '2024-11-12'}
+doc['post_type'] == 'snapshot_proposal'
     
     
 
