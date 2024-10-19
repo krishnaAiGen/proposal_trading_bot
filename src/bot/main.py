@@ -29,7 +29,7 @@ with open('config.json', 'r') as json_file:
 
 def store_data(db):
     print("Initating first DB creation")
-    proposal_dict = download_and_save_proposal(db)
+    proposal_dict = download_and_save_proposal(db, False)
     start_time = store_into_db(proposal_dict)
     print("Key DB created successfully")
     
@@ -157,7 +157,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             sentiment_crypto, crypto_score = analyzer.analyze_sentiment(summary)
             sentiment, sentimnet_score = predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto_score)
             
-            if sentiment == 'positive' and sentimnet_score >= 0.75: 
+            if sentiment == 'positive' and sentimnet_score >= 0.80: 
                 #making an object for bullish and bearish price prediction
                 bullish_predictor = BullishSentimentPredictor(config['bullish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bullish_predictor.predict(summary)['predicted_label']]
@@ -174,7 +174,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "long", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
                     send_trade_info_slack(coin, "Long", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
                     
-            if sentiment == 'negative' and sentimnet_score >= 0.75:
+            if sentiment == 'negative' and sentimnet_score >= 0.80:
                 #making an object for bullish and bearish price prediction
                 bearish_predictor = BearishSentimentPredictor(config['bearish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bearish_predictor.predict(summary)['predicted_label']]

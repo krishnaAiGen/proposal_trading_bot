@@ -11,6 +11,9 @@ from bs4 import BeautifulSoup
 from pymongo import MongoClient
 import json
 from datetime import datetime
+from suppress_logging import SuppressLogging
+from google.api_core.retry import Retry
+
 
 with open('config.json', 'r') as json_file:
     config = json.load(json_file)
@@ -33,11 +36,17 @@ def clean_content(html_text):
     
     return clean_text
 
-def download_and_save_proposal(db):
+def download_and_save_proposal(db, scan):
     print("#########Downloading intial proposals###########")
+    retry_strategy = Retry()
     collection_name = 'ai_posts'
     collection_ref = db.collection(collection_name)    
-    docs = collection_ref.stream()
+    
+    if scan:
+        docs = collection_ref.order_by('created_at', direction='DESCENDING').limit(100).stream(retry=retry_strategy)
+    else:
+        docs = collection_ref.stream(retry=retry_strategy)
+
     
     protocol_list = []
     docs_list = []
@@ -46,13 +55,17 @@ def download_and_save_proposal(db):
         if protocol not in protocol_list:
             protocol_list.append(protocol)
         docs_list.append(doc.to_dict())
-            
+        
     proposal_dict = {}
     for key in protocol_list:
         discourse_df = pd.DataFrame(columns = ['protocol', 'post_id', 'timestamp', 'title', 'description', "discussion_link"])    
         
         for doc in docs_list: 
             try:
+                
+                # doc = post_data_df.iloc[0]
+                # key = 'aave'
+                
                 if doc['post_type'] == 'snapshot_proposal':
                     df_row = []
                     if key in doc['house_id']:
@@ -71,7 +84,8 @@ def download_and_save_proposal(db):
                         
                         temp_df = pd.DataFrame([df_row], columns=discourse_df.columns)
                         
-                        discourse_df = pd.concat([discourse_df, temp_df], ignore_index=True)
+                        with SuppressLogging():
+                            discourse_df = pd.concat([discourse_df, temp_df], ignore_index=True)
             
             except Exception as e:
                 print(doc)
@@ -85,26 +99,31 @@ def download_and_save_proposal(db):
 def check_new_post(proposal_dict):
     proposal_post_id = list(pd.read_csv(config["data_dir"] + '/proposal_post_id.csv', index_col=0)['post_id'])
     
-    columns = ["post_id", "coin", "description"]
+    columns = ["post_id", "coin", "description", "discussion_link", "timestamp"]
     new_row_df = pd.DataFrame(columns = columns)
     
     for key, coin_df in proposal_dict.items():
         for index, row in coin_df.iterrows():
+            
+            # row = post_data_df.iloc[0]
+            
             post_id = row['post_id']
             if post_id not in proposal_post_id:
                 coin = post_id.split("--")[0]
                 description = row['description']
                 discussion_link = row['discussion_link']
+                timestamp = row['timestamp']
                 
                 new_row = {
                     "post_id" : post_id,
                     "coin" : coin,
                     "description": description,
-                    "discussion_link": discussion_link
+                    "discussion_link": discussion_link,
+                    "timestamp": timestamp
                     }
-                
-                new_row_df = new_row_df.concat([new_row_df, pd.DataFrame(new_row)], ignore_index=True)
-
+                with SuppressLogging():
+                    new_row_df = pd.concat([new_row_df, pd.DataFrame([new_row])], ignore_index=True)
+                    
     return new_row_df
 
 
@@ -131,8 +150,6 @@ def store_into_db(proposal_dict):
 
 
     
-doc = {'post_type': 'snapshot_proposal', 'description': '\n    This is a signaling proposal to update Stride’s tokenomics by introducing a buyback and burn mechanism for the STRD token using Stride protocol fees...\n    ', 'post_id': 'aave-test1', 'coin': 'aave', 'protocol': 'aave', 'title': 'simple title', 'discussion_link': 'https://commonwealth.im/stride/discussion/25027-stride-tokenomics-update-allocate-protocol-fees-to-buy-back-and-burn-strd', 'timestamp': '2024-11-12'}
-doc['post_type'] == 'snapshot_proposal'
     
     
 
