@@ -6,12 +6,29 @@ import sys
 from slack_bot import post_error_to_slack
 from delete_live_trade import delete_live_trade
 import traceback
+import json
+import os 
+
+def check_past_data():
+    with open('config.json', 'r') as json_file:
+        config = json.load(json_file)
+    
+    files_data_len = len(os.listdir(config['data_dir']))
+    if files_data_len >=3:
+        return True
+    else:
+        return False
 
 def scan_proposals():
     try:
         counter = 0
         db, app = create_firebase_client()
-        store_data(db)
+        db_status = check_past_data()
+        
+        if db_status == False:
+            print("-------------No DB Found, creating new DB----------")
+            store_data(db)
+        
         summary_obj = Summarization("mistral")
         sentiment_analyzer = FinBERTSentiment()
 

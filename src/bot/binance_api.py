@@ -3,6 +3,8 @@ from binance.enums import SIDE_BUY, SIDE_SELL, ORDER_TYPE_MARKET
 from binance.enums import *
 import json
 import os
+from slack_bot import post_error_to_slack
+
 
 with open('config.json', 'r') as json_file:
     config = json.load(json_file)
@@ -36,7 +38,7 @@ def get_quantity(symbol):
     # balance = get_balance_future()
     print("Balance is ", balance)
     balance = 5000
-
+    print("Taking trade balance of :", balance)
         
     current_price = get_current_price(symbol)
     quantity = 1 * ((balance * 3) / float(current_price))
@@ -149,6 +151,7 @@ def create_buy_order_long(coin, target_price):
         print("Order Details:", market_buy_order)
     except Exception as e:
         print(f"An error occurred: {e}")
+        post_error_to_slack(f"An error occurred: {e}")
         print("Retrying to place the Market order...")
     
     buying_price = get_current_price(symbol)
@@ -174,6 +177,7 @@ def create_buy_order_long(coin, target_price):
             print("Order Details:", stop_loss_order)
         except Exception as e:
             print(f"An error occurred: {e}")
+            post_error_to_slack(f"An error occurred: {e}")
             print("Retrying to place the stop-loss order...")
         
         stop_loss_orderID = stop_loss_order['orderId']
@@ -229,6 +233,7 @@ def create_buy_order_short(coin):
         print("Order Details:", market_buy_order)
     except Exception as e:
         print(f"An error occurred: {e}")
+        post_error_to_slack(f"An error occurred: {e}")
         print("Retrying to place the Market order...")
     
     buying_price = get_current_price(symbol)
@@ -254,6 +259,7 @@ def create_buy_order_short(coin):
             print("Order Details:", stop_loss_order)
         except Exception as e:
             print(f"An error occurred: {e}")
+            post_error_to_slack(f"An error occurred: {e}")
             print("Retrying to place the stop-loss order...")
         
         stop_loss_orderID = stop_loss_order['orderId']

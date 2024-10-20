@@ -148,15 +148,40 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             
             summary = summary_obj.summarize_text(row['description'])
             
-            # sentiment_analyzer = FinBERTSentiment()
-            # summary = summ_text
-            # print(summary)
-            
             sentiment, sentimnet_score = sentiment_analyzer.predict(summary)
             analyzer = CryptoSentimentAnalyzer()  
             sentiment_crypto, crypto_score = analyzer.analyze_sentiment(summary)
             sentiment, sentimnet_score = predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto_score)
             
+            """
+            Saving into DB
+            """
+            new_row = {
+                "post_id" :  post_id,
+                "coin" : coin,
+                "description": description,
+                "summary" :  summary,
+                "sentiment" :  sentiment,
+                "sentiment_score" : sentimnet_score,
+                }
+            if post_id not in list(proposal_post_all['post_id']):
+                proposal_post_all = pd.concat([proposal_post_all, pd.DataFrame([new_row])], ignore_index=True) 
+        
+            proposal_post_all.to_csv(config['data_dir'] + '/proposal_post_all.csv')
+            
+            #store into proposal_post_id 
+            new_row1 = {
+                "post_id" : post_id
+                }
+            if post_id not in list(proposal_post_id['post_id']):
+                proposal_post_id = pd.concat([proposal_post_id, pd.DataFrame([new_row1])], ignore_index=True)
+            
+            proposal_post_id.to_csv(config['data_dir'] + '/proposal_post_id.csv')  
+            
+            
+            """
+            taking trade from here
+            """
             if sentiment == 'positive' and sentimnet_score >= 0.80: 
                 #making an object for bullish and bearish price prediction
                 bullish_predictor = BullishSentimentPredictor(config['bullish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
@@ -193,27 +218,27 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                     send_trade_info_slack(coin, "Short", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
 
                 
-            new_row = {
-                "post_id" :  post_id,
-                "coin" : coin,
-                "description": description,
-                "summary" :  summary,
-                "sentiment" :  sentiment,
-                "sentiment_score" : sentimnet_score,
-                }
-            if post_id not in list(proposal_post_all['post_id']):
-                proposal_post_all = pd.concat([proposal_post_all, pd.DataFrame([new_row])], ignore_index=True) 
+        #     new_row = {
+        #         "post_id" :  post_id,
+        #         "coin" : coin,
+        #         "description": description,
+        #         "summary" :  summary,
+        #         "sentiment" :  sentiment,
+        #         "sentiment_score" : sentimnet_score,
+        #         }
+        #     if post_id not in list(proposal_post_all['post_id']):
+        #         proposal_post_all = pd.concat([proposal_post_all, pd.DataFrame([new_row])], ignore_index=True) 
         
-        proposal_post_all.to_csv(config['data_dir'] + '/proposal_post_all.csv')
+        # proposal_post_all.to_csv(config['data_dir'] + '/proposal_post_all.csv')
         
-        #store into proposal_post_id 
-        new_row1 = {
-            "post_id" : post_id
-            }
-        if post_id not in list(proposal_post_id['post_id']):
-            proposal_post_id = pd.concat([proposal_post_id, pd.DataFrame([new_row1])], ignore_index=True)
+        # #store into proposal_post_id 
+        # new_row1 = {
+        #     "post_id" : post_id
+        #     }
+        # if post_id not in list(proposal_post_id['post_id']):
+        #     proposal_post_id = pd.concat([proposal_post_id, pd.DataFrame([new_row1])], ignore_index=True)
         
-        proposal_post_id.to_csv(config['data_dir'] + '/proposal_post_id.csv')  
+        # proposal_post_id.to_csv(config['data_dir'] + '/proposal_post_id.csv')  
         
 
 def close_firebase_client(app):

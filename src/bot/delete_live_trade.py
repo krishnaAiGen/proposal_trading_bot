@@ -47,3 +47,8 @@ def delete_live_trade():
             print("No trade was deleted from proposal post live")
     
 
+
+
+
+
+   
