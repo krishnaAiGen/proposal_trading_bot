@@ -28,9 +28,10 @@ client = Client(config['API_KEY'], config['API_SECRET'], tld='com')
 
 
 #Change margin type to ISOLATED before placing the order
-try:
-    client.futures_change_margin_type(symbol=symbol, marginType="ISOLATED")
-    print(f"Margin type set to ISOLATED for {symbol}.")
-except Exception as e:
-    print(f"Error setting margin type: {e}")
-    post_error_to_slack(f"Error setting margin type for {symbol}: {e}")
+for key, symbol in coin_dict.items():
+    try:
+        client.futures_change_margin_type(symbol=symbol, marginType="ISOLATED")
+        print(f"Margin type set to ISOLATED for {symbol}.")
+    except Exception as e:
+        print(f"Error setting margin type: {e}, {symbol}")
+        # post_error_to_slack(f"Error setting margin type for {symbol}: {e}")
