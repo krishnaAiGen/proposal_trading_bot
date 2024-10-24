@@ -14,8 +14,8 @@ from binance.client import Client
 with open('config.json', 'r') as json_file:
     config = json.load(json_file)
 
-with open('proposal_post_live.json', 'r') as json_file:
-    live_trade = json.load(json_file)
+# with open('proposal_post_live.json', 'r') as json_file:
+#     live_trade = json.load(json_file)
 
     
 # Initialize the Binance client
