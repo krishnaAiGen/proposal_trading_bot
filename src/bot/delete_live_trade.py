@@ -9,7 +9,7 @@ import json
 from binance.client import Client
 from slack_bot import post_error_to_slack
 
-def delete_live_trade():  
+def delete_live_trade(client):  
     with open('config.json', 'r') as json_file:
         config = json.load(json_file)
 
@@ -18,8 +18,6 @@ def delete_live_trade():
         
     with open('coin.json', 'r') as json_file:
         coin_symbol = json.load(json_file)
-
-    client = Client(config['API_KEY'], config['API_SECRET'], tld='com')
     
     live_coin_symbol = {}
     for key, value in proposal_post_live.items():

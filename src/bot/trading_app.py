@@ -10,6 +10,7 @@ import json
 import os 
 
 def check_past_data():
+    global config
     with open('config.json', 'r') as json_file:
         config = json.load(json_file)
     
@@ -31,11 +32,13 @@ def scan_proposals():
         
         summary_obj = Summarization("mistral")
         sentiment_analyzer = FinBERTSentiment()
+        
+        client = Client(config['API_KEY'], config['API_SECRET'], tld='com')
 
         while True:
             try:
                 # Perform the main logic of each iteration inside its own try-except block
-                delete_live_trade()
+                delete_live_trade(client)
                 proposal_dict = download_and_save_proposal(db, True)
                 new_row_df = check_new_post(proposal_dict)
                 # print(new_row_df.iloc[0])

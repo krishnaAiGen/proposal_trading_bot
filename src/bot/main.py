@@ -182,7 +182,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             """
             taking trade from here
             """
-            if sentiment == 'positive' and sentimnet_score >= 0.80: 
+            if sentiment == 'positive' and sentimnet_score >= 0.90: 
                 #making an object for bullish and bearish price prediction
                 bullish_predictor = BullishSentimentPredictor(config['bullish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bullish_predictor.predict(summary)['predicted_label']]
@@ -199,13 +199,13 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "long", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
                     send_trade_info_slack(coin, "Long", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
                     
-            if sentiment == 'negative' and sentimnet_score >= 0.80:
+            if sentiment == 'negative' and sentimnet_score >= 0.90:
                 #making an object for bullish and bearish price prediction
                 bearish_predictor = BearishSentimentPredictor(config['bearish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
                 target_price = price_dict[bearish_predictor.predict(summary)['predicted_label']]
                 
                 if post_id not in live_post_ids:
-                    send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price)
+                    send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price, summary)
 
                 
                 check_status = check_trade_limit(coin)

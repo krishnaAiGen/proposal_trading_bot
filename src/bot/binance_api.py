@@ -4,6 +4,8 @@ from binance.enums import *
 import json
 import os
 from slack_bot import post_error_to_slack
+import math
+
 
 
 with open('config.json', 'r') as json_file:
@@ -34,21 +36,23 @@ def get_current_price(symbol):
     return ticker['price']
 
 def get_quantity(symbol):
-    balance = get_balance_future()
-    # balance = get_balance_future()
-    print("Balance is ", balance)
     balance = 5000
+    print("Balance is ", balance)
     print("Taking trade balance of :", balance)
         
     current_price = get_current_price(symbol)
-    quantity = 1 * ((balance * 3) / float(current_price))
+    quantity = 0.95 * ((balance * 3) / float(current_price))
     print("quantity is ", quantity)
     # quantity = 0.9 * ((balance * 20) / float(current_price))
 
-    coin_precision = precion_dict[symbol]
-
+    coin_precision = precion_dict[symbol]    
+    rounded_quantity = format(quantity, f".{coin_precision}f")   
     
-    return format(quantity, f".{coin_precision}f")
+    if float(rounded_quantity) > quantity:
+        rounded_quantity = math.floor(quantity * 10) / 10
+
+    return rounded_quantity
+
 
 def update_stop_loss(trade_type, symbol, previous_stop_loss_orderId):
     buying_price = get_current_price(symbol)
@@ -137,8 +141,11 @@ def create_buy_order_long(coin, target_price):
     quantity = get_quantity(symbol)   
     print("Bought Quantity", quantity)
 
+    # Optionally set the leverage, if needed
+    result = client.futures_change_leverage(symbol=symbol, leverage=3)
+
     try:
-        # result = client.futures_change_leverage(symbol=symbol, leverage = 5)
+        # result = client.futures_change_leverage(symbol=symbol, leverage = 5)1
         market_buy_order = client.futures_create_order(
            symbol = symbol,
            side = SIDE_BUY,
@@ -216,6 +223,9 @@ def create_buy_order_short(coin):
     symbol = coin_dict[coin]
     quantity = get_quantity(symbol)
     print("Bought Quantity", quantity)
+    
+    # Optionally set the leverage, if needed
+    result = client.futures_change_leverage(symbol=symbol, leverage=3)
 
     
     try:
@@ -298,14 +308,9 @@ def check_order_status(symbol, order_id):
         return None   
 
 # if __name__ == "__main__":
-    # buying_price, trade_id, stop_loss_price, stop_loss_orderID = create_buy_order_long('uniswap')
-    # updated_stop_lossID = update_stop_loss('long', 'UNIUSDT', stop_loss_orderID)
-    
-    # buying_price, stop_loss_price, trade_id, stop_loss_orderID = create_buy_order_short('btc')
-    # updated_stop_lossID = update_stop_loss('short', 'BTCUSDT', stop_loss_orderID)
-    
-    # print(check_order_status('UNIUSDT', 22))
+#     coin = 'aave'
+#     target_price = 180
+#     create_buy_order_long(coin, target_price)
 
-# open_orders = client.futures_get_open_orders(symbol='AAVEUSDT')
 
     
