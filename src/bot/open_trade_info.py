@@ -38,3 +38,5 @@ for position_dict in open_positions:
     
 
 print(open_positions)
+
+

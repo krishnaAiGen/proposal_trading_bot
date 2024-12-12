@@ -9,7 +9,6 @@ import os
 import pandas as pd
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
-import json
 from datetime import datetime
 from suppress_logging import SuppressLogging
 from google.api_core.retry import Retry

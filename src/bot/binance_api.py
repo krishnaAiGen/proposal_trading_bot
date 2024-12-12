@@ -37,6 +37,7 @@ def get_current_price(symbol):
 
 def get_quantity(symbol):
     balance = 5000
+    # balance = 10
     print("Balance is ", balance)
     print("Taking trade balance of :", balance)
         
@@ -214,7 +215,7 @@ def create_buy_order_long(coin, target_price):
     #placing a target price
     
 
-def create_buy_order_short(coin):
+def create_buy_order_short(coin, target_price):
     #####-----------
     # coin = 'uniswap'
     # target_price = 0.02

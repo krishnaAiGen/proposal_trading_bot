@@ -5,13 +5,12 @@ import time
 import json
 from datetime import datetime
 from summarize import Summarization
-from sentiment import FinBERTSentiment
-from sentiment_crypto import CryptoSentimentAnalyzer
 from sell import format_time_utc
 from binance_api import * 
 from slack_bot import post_to_slack
-from bullish_price import BullishSentimentPredictor
-from bearish_price import BearishSentimentPredictor
+from bullish_price import RobertaForRegressionBullish
+from bearish_price import RobertaForRegressionBearish
+from text_verification import classify_text
 
 
 price_dict = {
@@ -33,7 +32,7 @@ def store_data(db):
     start_time = store_into_db(proposal_dict)
     print("Key DB created successfully")
     
-    proposal_post_all = pd.DataFrame(columns = ["timestamp", "post_id", "coin", "description", "summary", "sentiment", "sentiment_score"])    
+    proposal_post_all = pd.DataFrame(columns = ["timestamp", "post_id", "coin", "description", "summary", "sentiment", "sentiment_score", "text_verify"])    
     proposal_post_all.to_csv(config['data_dir'] + '/proposal_post_all.csv')
     print("Proposal_post_all DB created successfully")
     
@@ -138,7 +137,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
         for key, live_trade in proposal_post_live.items():
             live_post_ids.append(proposal_post_live[key]['post_id'])
 
-        
+
         for index, row in new_row_df.iterrows():
             coin = row['coin']
             post_id = row['post_id']
@@ -146,13 +145,10 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             timestamp = row['timestamp']
             discussion_link = row['discussion_link']
             
+            text_verify = classify_text(description)
             summary = summary_obj.summarize_text(row['description'])
-            
             sentiment, sentimnet_score = sentiment_analyzer.predict(summary)
-            analyzer = CryptoSentimentAnalyzer()  
-            sentiment_crypto, crypto_score = analyzer.analyze_sentiment(summary)
-            sentiment, sentimnet_score = predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto_score)
-            
+                        
             """
             Saving into DB
             """
@@ -163,6 +159,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 "summary" :  summary,
                 "sentiment" :  sentiment,
                 "sentiment_score" : sentimnet_score,
+                "text_verify" : text_verify
                 }
             if post_id not in list(proposal_post_all['post_id']):
                 proposal_post_all = pd.concat([proposal_post_all, pd.DataFrame([new_row])], ignore_index=True) 
@@ -177,32 +174,31 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 proposal_post_id = pd.concat([proposal_post_id, pd.DataFrame([new_row1])], ignore_index=True)
             
             proposal_post_id.to_csv(config['data_dir'] + '/proposal_post_id.csv')  
-            
-            
+                        
             """
             taking trade from here
             """
-            if sentiment == 'positive' and sentimnet_score >= 0.90: 
+            if sentiment == 'positive' and sentimnet_score >= 0.80 and text_verify == 'genuine': 
                 #making an object for bullish and bearish price prediction
-                bullish_predictor = BullishSentimentPredictor(config['bullish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
-                target_price = price_dict[bullish_predictor.predict(summary)['predicted_label']]
+                bullish_predictor = RobertaForRegressionBullish(config['bullish_dir'])
+                target_price = bullish_predictor.predict(summary)[0]
                 
                 if post_id not in live_post_ids:
                     send_new_post_slack(coin, post_id, discussion_link, sentiment, sentimnet_score, target_price, summary)
                 
                 check_status = check_trade_limit(coin)
                 if check_status == True:
-                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice, quantity = create_buy_order_long(coin, target_price)
+                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice, quantity = create_buy_order_long(coin, target_price/100)   #divide by 100 because target profit is in number ex 5 bringing it to 0.05
                     buying_time = format_time_utc()
                     print("---------------TRADE BOUGHT---------------------")
                     
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "long", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
                     send_trade_info_slack(coin, "Long", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
                     
-            if sentiment == 'negative' and sentimnet_score >= 0.90:
+            if sentiment == 'negative' and sentimnet_score >= 0.80 and text_verify == 'genuine':
                 #making an object for bullish and bearish price prediction
-                bearish_predictor = BearishSentimentPredictor(config['bearish_dir'], {0: 'high', 1: 'medium', 2: 'small', 3: 'verySmall'})
-                target_price = price_dict[bearish_predictor.predict(summary)['predicted_label']]
+                bearish_predictor = RobertaForRegressionBearish(model_path = config['bearish_dir'])
+                target_price = bearish_predictor.predict(summary)[0]
                 
                 if post_id not in live_post_ids:
                     send_new_post_slack(coin, post_id, description, sentiment, sentimnet_score, target_price, summary)
@@ -210,40 +206,18 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                 
                 check_status = check_trade_limit(coin)
                 if check_status == True:
-                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice, quantity = create_buy_order_short(coin, target_price)
+                    buying_price, trade_id, stop_loss_price, stop_loss_orderID, target_orderId, targetPrice, quantity = create_buy_order_short(coin, target_price/100) #divide by 100 because target profit is in number ex 5 bringing it to 0.05
                     buying_time = format_time_utc()
                     print("---------------TRADE BOUGHT---------------------")
                     
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "short", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
                     send_trade_info_slack(coin, "Short", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
 
-                
-        #     new_row = {
-        #         "post_id" :  post_id,
-        #         "coin" : coin,
-        #         "description": description,
-        #         "summary" :  summary,
-        #         "sentiment" :  sentiment,
-        #         "sentiment_score" : sentimnet_score,
-        #         }
-        #     if post_id not in list(proposal_post_all['post_id']):
-        #         proposal_post_all = pd.concat([proposal_post_all, pd.DataFrame([new_row])], ignore_index=True) 
-        
-        # proposal_post_all.to_csv(config['data_dir'] + '/proposal_post_all.csv')
-        
-        # #store into proposal_post_id 
-        # new_row1 = {
-        #     "post_id" : post_id
-        #     }
-        # if post_id not in list(proposal_post_id['post_id']):
-        #     proposal_post_id = pd.concat([proposal_post_id, pd.DataFrame([new_row1])], ignore_index=True)
-        
-        # proposal_post_id.to_csv(config['data_dir'] + '/proposal_post_id.csv')  
-        
 
 def close_firebase_client(app):
     firebase_admin.delete_app(app)
     print("Firebase client closed successfully.")
+
 
 
 
