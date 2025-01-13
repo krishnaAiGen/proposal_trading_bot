@@ -141,6 +141,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
         for index, row in new_row_df.iterrows():
             coin = row['coin']
             post_id = row['post_id']
+            post_to_slack(str(post_id))
             description = row['description']
             timestamp = row['timestamp']
             discussion_link = row['discussion_link']

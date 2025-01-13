@@ -46,3 +46,8 @@ def save_error(error):
         save_dictionary(error_dict, error_filename)
         
     print(f"error {error} saved")
+    
+    
+
+
+

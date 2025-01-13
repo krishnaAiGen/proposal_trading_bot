@@ -19,7 +19,7 @@ with open('config.json', 'r') as json_file:
 
 client = Client(config['API_KEY'], config['API_SECRET'], tld='com')
 
-# Load proposal and coin data
+#Load proposal and coin data
 with open(config['data_dir'] + '/proposal_post_live.json', 'r') as json_file:
     proposal_post_live = json.load(json_file)
 

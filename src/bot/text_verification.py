@@ -6,6 +6,7 @@ Created on Thu Dec 12 17:02:16 2024
 @author: krishnayadav
 """
 import nltk
+nltk.download('punkt')
 nltk.download('words')
 
 
