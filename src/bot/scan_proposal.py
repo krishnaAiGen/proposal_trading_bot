@@ -42,7 +42,7 @@ def download_and_save_proposal(db, scan):
     collection_ref = db.collection(collection_name)    
     
     if scan:
-        docs = collection_ref.order_by('created_at', direction='DESCENDING').limit(100).stream(retry=retry_strategy)
+        docs = collection_ref.order_by('created_at', direction='DESCENDING').limit(20).stream(retry=retry_strategy)
     else:
         # docs = collection_ref.stream(retry=retry_strategy)
         docs = collection_ref.order_by('created_at', direction='DESCENDING').limit(1000).stream(retry=retry_strategy)
