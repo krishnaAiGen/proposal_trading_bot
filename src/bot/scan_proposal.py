@@ -44,7 +44,8 @@ def download_and_save_proposal(db, scan):
     if scan:
         docs = collection_ref.order_by('created_at', direction='DESCENDING').limit(100).stream(retry=retry_strategy)
     else:
-        docs = collection_ref.stream(retry=retry_strategy)
+        # docs = collection_ref.stream(retry=retry_strategy)
+        docs = collection_ref.order_by('created_at', direction='DESCENDING').limit(1000).stream(retry=retry_strategy)
 
     
     protocol_list = []

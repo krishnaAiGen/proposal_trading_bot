@@ -74,7 +74,7 @@ def scan_proposals():
 
 
 if __name__ == "__main__":
-    post_error_to_slack("Governance Trading Bot Started")
+    # post_error_to_slack("Governance Trading Bot Started")
     scan_proposals()
     
 

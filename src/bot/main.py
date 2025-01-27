@@ -7,10 +7,11 @@ from datetime import datetime
 from summarize import Summarization
 from sell import format_time_utc
 from binance_api import * 
-from slack_bot import post_to_slack
+from slack_bot import *
 from bullish_price import RobertaForRegressionBullish
 from bearish_price import RobertaForRegressionBearish
 from text_verification import classify_text
+from clean_html import remove_html_tags
 
 
 price_dict = {
@@ -125,7 +126,7 @@ def predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto
         return sentiment, sentimnet_score
     
 
-def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
+def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):    
     if len(new_row_df) != 0:
         proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv', index_col=0)
         proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv', index_col=0)
@@ -141,13 +142,14 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
         for index, row in new_row_df.iterrows():
             coin = row['coin']
             post_id = row['post_id']
-            post_to_slack(str(post_id))
+            post_error_to_slack(str(post_id))
             description = row['description']
+            description = clean_content(description)
             timestamp = row['timestamp']
             discussion_link = row['discussion_link']
             
             text_verify = classify_text(description)
-            summary = summary_obj.summarize_text(row['description'])
+            summary = summary_obj.summarize_text(description)
             sentiment, sentimnet_score = sentiment_analyzer.predict(summary)
                         
             """
