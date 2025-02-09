@@ -12,6 +12,7 @@ from bullish_price import RobertaForRegressionBullish
 from bearish_price import RobertaForRegressionBearish
 from text_verification import classify_text
 from clean_html import remove_html_tags
+from btc_check import btc_price_check
 
 
 price_dict = {
@@ -127,7 +128,7 @@ def predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto
     
 
 def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):    
-    if len(new_row_df) != 0:
+    if len(new_row_df) != 0 and not btc_price_check():
         proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv', index_col=0)
         proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv', index_col=0)
         
