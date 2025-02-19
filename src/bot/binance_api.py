@@ -5,6 +5,7 @@ import json
 import os
 from slack_bot import post_error_to_slack
 import math
+import pandas as pd
 
 
 
@@ -34,6 +35,53 @@ def get_current_price(symbol):
     ticker = client.get_symbol_ticker(symbol=symbol)
     
     return ticker['price']
+
+def get_last_5_days_price(coin_name, initial_date, final_date, interval="1d"):
+    symbol_name = coin_dict[coin_name]
+    
+    # Get one day after final_date to ensure we include final_date in results
+    final_date_obj = pd.to_datetime(final_date) + pd.DateOffset(days=1)
+    end_str = final_date_obj.strftime('%Y-%m-%d')
+    
+    # Always use daily interval
+    interval = "1d"
+    
+    klines = client.get_historical_klines(
+        symbol=symbol_name,
+        interval=interval,
+        start_str=initial_date,
+        end_str=end_str  # Using the adjusted end date
+    )
+    
+    # Create empty result dictionary
+    result_dict = {}
+    
+    for kline in klines:
+        # Convert timestamp (milliseconds) to date string
+        timestamp_ms = kline[0]
+        date_obj = pd.to_datetime(timestamp_ms, unit='ms')
+        date_str = date_obj.strftime('%Y-%m-%d')
+        
+        # Extract OHLC values and convert to float
+        ohlc_data = {
+            "open": float(kline[1]),
+            "high": float(kline[2]),
+            "low": float(kline[3]),
+            "close": float(kline[4])
+        }
+        
+        # Add to result dictionary
+        result_dict[date_str] = ohlc_data
+    
+    # Check if we retrieved all expected dates
+    expected_dates = pd.date_range(start=initial_date, end=final_date)
+    expected_date_strs = [date.strftime('%Y-%m-%d') for date in expected_dates]
+    
+    missing_dates = set(expected_date_strs) - set(result_dict.keys())
+    if missing_dates:
+        print(f"Warning: No data found for dates: {missing_dates}")
+    
+    return result_dict
 
 def get_quantity(symbol):
     balance = 5000

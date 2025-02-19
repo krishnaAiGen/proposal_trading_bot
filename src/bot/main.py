@@ -13,6 +13,7 @@ from bearish_price import RobertaForRegressionBearish
 from text_verification import classify_text
 from clean_html import remove_html_tags
 from btc_check import btc_price_check
+from save_trades import Save
 
 
 price_dict = {
@@ -43,6 +44,17 @@ def store_data(db):
         json.dump(empty_data, json_file, indent=4)
         
     print("Proposal_post_live DB created successfully")
+    
+    price_check_file_path = config['data_dir'] + '/price_check.json'
+    if not os.path.exists(price_check_file_path):
+        data = []
+        # Create new file with empty list
+        with open(price_check_file_path, 'w') as f:
+            json.dump(data, f, indent=2)
+    
+    print("price_check_json created into DB")
+    
+    
 
 def store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, trade_type, stop_loss_orderID, proposal_post_live, target_orderId, targetPrice):
     new_data = {
@@ -127,7 +139,7 @@ def predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto
         return sentiment, sentimnet_score
     
 
-def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):    
+def trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo):    
     if len(new_row_df) != 0 and not btc_price_check():
         proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv', index_col=0)
         proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv', index_col=0)
@@ -152,6 +164,9 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
             text_verify = classify_text(description)
             summary = summary_obj.summarize_text(description)
             sentiment, sentimnet_score = sentiment_analyzer.predict(summary)
+            
+            #calculating deepseek and openAI sentiment
+            sentiment, sentimnet_score = reasoning.predict_sentiment(summary, sentimnet_score)
                         
             """
             Saving into DB
@@ -199,6 +214,16 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "long", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
                     send_trade_info_slack(coin, "Long", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
                     
+                    #saving info to dynamoDB
+                    try:
+                        save_object = Save(dynamo, 'trade_table')
+                        save_object.save_to_dynamo(coin, description, sentimnet_score, post_id)
+                        print("--saved to dynamoDB--")
+                    except Exception as e:
+                        print(f"Error saving to DynamoDB: {e}")
+                        post_error_to_slack(f"Error saving to DynamoDB: {e}")
+                        print("Continuing with remaining operations...")
+                    
             if sentiment == 'negative' and sentimnet_score >= 0.80 and text_verify == 'genuine':
                 #making an object for bullish and bearish price prediction
                 bearish_predictor = RobertaForRegressionBearish(model_path = config['bearish_dir'])
@@ -216,7 +241,16 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer):
                     
                     store_into_live(coin, post_id, trade_id, description, buying_price, buying_time, stop_loss_price, "short", stop_loss_orderID, proposal_post_live, target_orderId, targetPrice)        
                     send_trade_info_slack(coin, "Short", buying_price, stop_loss_price, targetPrice, trade_id, stop_loss_orderID, target_orderId, quantity)
-
+                    
+                    #saving info to dynamoDB
+                    try:
+                        save_object = Save(dynamo, 'trade_table')
+                        save_object.save_to_dynamo(coin, description, sentimnet_score, post_id)
+                        print("--saved to dynamoDB--")
+                    except Exception as e:
+                        print(f"Error saving to DynamoDB: {e}")
+                        post_error_to_slack(f"Error saving to DynamoDB: {e}")
+                        print("Continuing with remaining operations...")
 
 def close_firebase_client(app):
     firebase_admin.delete_app(app)

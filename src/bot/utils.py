@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 import pytz
 import os
+import requests
+from binance_api import get_current_price
 
 with open('config.json', 'r') as json_file:
     config = json.load(json_file)
@@ -46,6 +48,20 @@ def save_error(error):
         save_dictionary(error_dict, error_filename)
         
     print(f"error {error} saved")
+
+
+def get_coin_price(symbol):
+    SYMBOL_TO_ID = load_dictionary('coin.json')
+    symbol_lower = symbol.lower()
+        
+    if symbol_lower not in SYMBOL_TO_ID:
+        raise ValueError(f"Symbol '{symbol}' not found in the mapping.")
+
+    coin_id = SYMBOL_TO_ID[symbol_lower]
+    coin_price = get_current_price(coin_id)
+    
+    return coin_price
+    
     
     
 

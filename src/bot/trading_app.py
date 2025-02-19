@@ -10,6 +10,13 @@ import traceback
 import json
 import os 
 from utils import *
+from reasoning import Reasoning
+from dotenv import load_dotenv
+from dynamo_utils import DynamoDBClient
+from price_monitor import Monitor
+
+load_dotenv()
+
 
 def check_past_data():
     global config
@@ -36,13 +43,22 @@ def scan_proposals():
             summary_obj = Summarization("mistral")
             sentiment_analyzer = SentimentPredictor(config['sentiment_dir'])
             client = Client(config['API_KEY'], config['API_SECRET'], tld='com')
+            
+            reasoning = Reasoning(
+                    model="deepseek-r1:8b",
+                    openai_api_key=os.getenv("OPENAI_KEY")
+                )
+            
+            dynamo = DynamoDBClient()
+            monitor = Monitor(dynamo, 'trade_table')
 
             while True:  # Main operational loop
                 try:
                     delete_live_trade(client)
                     proposal_dict = download_and_save_proposal(db, True)
-                    new_row_df = check_new_post(proposal_dict)      
-                    trigger_trade(new_row_df, summary_obj, sentiment_analyzer)
+                    new_row_df = check_new_post(proposal_dict)   
+                    trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo)
+                    monitor.check_price()
                     counter += 1
 
                     # Countdown timer for 2 minutes (120 seconds)
