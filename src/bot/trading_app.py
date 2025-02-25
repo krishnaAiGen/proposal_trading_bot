@@ -45,7 +45,6 @@ def scan_proposals():
             client = Client(config['API_KEY'], config['API_SECRET'], tld='com')
             
             reasoning = Reasoning(
-                    model="deepseek-r1:8b",
                     openai_api_key=os.getenv("OPENAI_KEY")
                 )
             
@@ -57,6 +56,7 @@ def scan_proposals():
                     delete_live_trade(client)
                     proposal_dict = download_and_save_proposal(db, True)
                     new_row_df = check_new_post(proposal_dict)   
+            
                     trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo)
                     monitor.check_price()
                     counter += 1

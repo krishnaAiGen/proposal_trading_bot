@@ -141,6 +141,7 @@ def predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto
 
 def trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo):    
     if len(new_row_df) != 0 and not btc_price_check():
+    # if len(new_row_df) != 0:
         proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv', index_col=0)
         proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv', index_col=0)
         

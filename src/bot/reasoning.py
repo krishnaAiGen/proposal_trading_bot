@@ -9,11 +9,11 @@ from typing import Tuple, Optional
 from dotenv import load_dotenv
 import ast
 
+
 load_dotenv()
 
 class Reasoning:
-    def __init__(self, model, openai_api_key):
-        self.model = model
+    def __init__(self, openai_api_key):
         self.max_attempts = 5
         self.retry_delay = 1  # seconds between retries
         self.client = OpenAI(api_key=openai_api_key)
@@ -47,62 +47,115 @@ class Reasoning:
 
     def get_openai_sentiment(self, description: str) -> float:
         """
-        Get sentiment score from OpenAI model with retry logic.
+       Get sentiment score from Deepseek model with retry logic.
+       """
+        initial_prompt = """
+        You are a financial and trading expert. Based on the content of this text, evaluate its sentiment and immediate impact on market prices.
+        Output your result in JSON format as {'positive': x} or {'negative': x}, where:
+        - x represents the score that can be in between 0 to 1.
+        Output only the JSON object.
         """
-        message = f"""
-            You are a financial and trading expert. Based on the content of this text, evaluate its immediate impact on market prices.
-            Output your result in JSON format as {{'score': x}}, where:
-            - 0 indicates strongly bearish sentiment
-            - 1 indicates strongly bullish sentiment
-            - Values between indicate mixed sentiment
-            
-            Text to analyze: {description}
-            
-            Return ONLY the JSON object, no other text.
-            """
-        
+        description = description + initial_prompt
+   
         for attempt in range(self.max_attempts):
             try:
                 response = self.client.chat.completions.create(
                     model="o1-preview",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": message
-                        }
-                    ]
+                    messages = [
+                         {"role": "user", "content": description}
+                     ]
                 )
                 
                 output = response.choices[0].message.content
                 try:
-                    score = float(ast.literal_eval(output)["score"])
-                    return score
-                except ValueError:
+                    # Parse JSON using regex and json library
+                    json_match = re.search(r'\{[^{}]*\}', output)
+                    if json_match:
+                        json_str = json_match.group()
+                        result = json.loads(json_str)                        
+                        sentiment, score = next(iter(result.items()))
+                        
+                        return sentiment, score
+                    else:
+                        if attempt == self.max_attempts - 1:
+                            raise RuntimeError(f"Failed to get valid JSON from Deepseek after {self.max_attempts} attempts")
+                        time.sleep(self.retry_delay)
+                        continue
+                        
+                except (ValueError, KeyError, json.JSONDecodeError) as e:
                     if attempt == self.max_attempts - 1:
-                        raise RuntimeError(f"Failed to get valid JSON from OpenAI after {self.max_attempts} attempts")
+                        raise RuntimeError(f"Failed to parse JSON response after {self.max_attempts} attempts: {str(e)}")
                     time.sleep(self.retry_delay)
                     continue
                     
-            except OpenAIError as e:
+            except Exception as e:
                 if attempt == self.max_attempts - 1:
-                    raise RuntimeError(f"OpenAI API error after {self.max_attempts} attempts: {str(e)}")
+                    raise RuntimeError(f"Deepseek API error after {self.max_attempts} attempts: {str(e)}")
                 time.sleep(self.retry_delay)
                 continue
+    
+    def get_deepseek_sentiment(self, description: str) -> float :
+        agent_endpoint = os.getenv("AGENT_ENDPOINT")
+        agent_key = os.getenv("AGENT_KEY")
+        
+        client = OpenAI(
+            base_url=agent_endpoint,
+            api_key=agent_key,
+        )
+        
+        max_retries = 5
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            print(f"try {retry_count}")
+            try:
+                response = client.chat.completions.create(
+                    model="n/a",
+                    messages=[
+                        {"role": "system", "content": """
+                         You are a financial and trading expert. Based on the content of this text, evaluate its sentiment and immediate impact on market prices.
+                         Output your result in JSON format as {'positive': x} or {'negative': x}, where:
+                         - x represents the score that can be in between 0 to 1.
+                         Output only the JSON object.
+                         """},
+                        {"role": "user", "content": description}
+                    ]
+                )
+                
+                for choice in response.choices:
+                    content = choice.message.content
+                    # Find JSON pattern between curly braces, including the braces
+                    json_match = re.search(r'\{[^{}]*\}', content)
+                    if json_match:
+                        json_str = json_match.group()
+                        result = json.loads(json_str)  # Parse JSON string to dict
+                        sentiment, score = next(iter(result.items()))
+                        
+                        return sentiment, score
+                
+                # If we didn't find JSON in the response, increment retry counter
+                retry_count += 1
+                if retry_count < max_retries:
+                    time.sleep(1)  # Add a small delay between retries
+                    continue
+                else:
+                    raise ValueError("Failed to get valid JSON response after 5 attempts")
+                    
+            except Exception as e:
+                retry_count += 1
+                if retry_count == max_retries:
+                    raise Exception(f"Failed after {max_retries} attempts. Error: {str(e)}")
+                time.sleep(1)  # Add a small delay between retries
+                continue
+
 
     def calculate_weighted_sentiment(self, ollama_score: float, openai_score: float, trained_score: float) -> Tuple[str, float]:
         """
         Calculate weighted sentiment score combining both models.
         """
         weighted_score = (ollama_score * self.ollama_weight) + (openai_score * self.openai_weight) + (trained_score * self.trained_weight)
-        
-        if weighted_score < 0.4:
-            sentiment = "bearish"
-        elif weighted_score > 0.6:
-            sentiment = "bullish"
-        else:
-            sentiment = "neutral"
-            
-        return sentiment, weighted_score
+
+        return weighted_score
     
     def predict_sentiment(self, description: str, trained_score: float) -> Tuple[str, float]:
         """
@@ -110,63 +163,34 @@ class Reasoning:
         If Ollama fails to produce a score after `max_attempts`, we fall back
         to averaging the OpenAI score and the trained score.
         """
-        llm = Ollama(model=self.model, temperature=1)
-        prompt = """
-        You are a financial and trading expert. Based on the content of this text, evaluate its immediate impact on market prices.
-        Output your result in JSON format as {'score': x}, where:
-        - 0 indicates strongly bearish sentiment
-        - 1 indicates strongly bullish sentiment
-        - Values between indicate mixed sentiment
-        Output only the JSON object.
-       """
-   
-       # First, try to get the Ollama score up to `max_attempts` times
-        ollama_score = None
-        for attempt in range(self.max_attempts):
-            try:
-                print(f"Ollama attempt: {attempt}")
-                try:
-                    ollama_output = llm.invoke(prompt + description)
-                except Exception as e:
-                    print(f"Error at invoke: {e}")
-                    continue
-                    
-                ollama_score = self.get_sentiment_score(ollama_output)
-                print(f"Ollama score: {ollama_score}")
-                break  # If successful, exit the loop
-            except (ValueError, json.JSONDecodeError, RuntimeError, OpenAIError) as e:
-                print(f"Ollama error: {e}, retrying...")
-                continue
+        deepseek_sentiment, deepseek_score = self.get_deepseek_sentiment(description)
                
         # Next, retrieve the OpenAI score
-        openai_score = self.get_openai_sentiment(description)
+        openai_sentiment, openai_score = self.get_openai_sentiment(description)
         print(f"OpenAI score: {openai_score}")
         print(f"Trained score: {trained_score}")
     
         # If Ollama score was not obtained after `max_attempts`, fallback to
         # a 50–50 average of OpenAI score and trained score
-        if ollama_score is None:
+        if deepseek_score is None:
             fallback_score = (0.6 * openai_score) + (0.4 * trained_score)
-            if fallback_score < 0.4:
-                final_sentiment = "negative"
-            elif fallback_score > 0.6:
-                final_sentiment = "positive"
-            else:
-                final_sentiment = "neutral"
+            final_sentiment = openai_sentiment
+            
             return final_sentiment, fallback_score
         else:
             # If Ollama was successful, combine the three scores using your existing weights
-            final_sentiment, weighted_score = self.calculate_weighted_sentiment(
-                ollama_score,
+            weighted_score = self.calculate_weighted_sentiment(
+                deepseek_score,
                 openai_score,
                 trained_score
             )
-            return final_sentiment, weighted_score
+            final_sentiment = openai_sentiment
+            
+        return final_sentiment, weighted_score
 
 
 # if __name__ == "__main__":
 #     reasoning = Reasoning(
-#         model="deepseek-r1:8b",
 #         openai_api_key=os.getenv("OPENAI_KEY")
 #     )
     
