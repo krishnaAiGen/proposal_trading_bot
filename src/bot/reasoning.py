@@ -17,9 +17,9 @@ class Reasoning:
         self.max_attempts = 5
         self.retry_delay = 1  # seconds between retries
         self.client = OpenAI(api_key=openai_api_key)
-        self.ollama_weight = 0.3
+        self.ollama_weight = 0.4
         self.openai_weight = 0.5
-        self.trained_weight = 0.2
+        self.trained_weight = 0.1
     
     def get_sentiment_score(self, output: str) -> float:
         """
@@ -45,10 +45,11 @@ class Reasoning:
         
         raise ValueError("No valid sentiment score found in output")
 
-    def get_openai_sentiment(self, description: str) -> float:
+    def get_openai_sentiment(self, description: str) -> Tuple[Optional[str], Optional[float]]:
         """
-       Get sentiment score from Deepseek model with retry logic.
-       """
+        Get sentiment score from OpenAI model with retry logic.
+        Returns a tuple of (sentiment, score) or (None, None) if the sentiment couldn't be retrieved.
+        """
         initial_prompt = """
         You are a financial and trading expert. Based on the content of this text, evaluate its sentiment and immediate impact on market prices.
         Output your result in JSON format as {'positive': x} or {'negative': x}, where:
@@ -58,6 +59,7 @@ class Reasoning:
         description = description + initial_prompt
    
         for attempt in range(self.max_attempts):
+            print(f"attempt {attempt}")
             try:
                 response = self.client.chat.completions.create(
                     model="o1-preview",
@@ -72,29 +74,34 @@ class Reasoning:
                     json_match = re.search(r'\{[^{}]*\}', output)
                     if json_match:
                         json_str = json_match.group()
-                        result = json.loads(json_str)                        
+                        json_str_fixed = json_str.replace("'", '"')
+                        result = json.loads(json_str_fixed)
                         sentiment, score = next(iter(result.items()))
                         
-                        return sentiment, score
+                        return sentiment, float(score)
                     else:
                         if attempt == self.max_attempts - 1:
-                            raise RuntimeError(f"Failed to get valid JSON from Deepseek after {self.max_attempts} attempts")
+                            return None, None
                         time.sleep(self.retry_delay)
                         continue
                         
                 except (ValueError, KeyError, json.JSONDecodeError) as e:
                     if attempt == self.max_attempts - 1:
-                        raise RuntimeError(f"Failed to parse JSON response after {self.max_attempts} attempts: {str(e)}")
+                        return None, None
                     time.sleep(self.retry_delay)
                     continue
                     
             except Exception as e:
                 if attempt == self.max_attempts - 1:
-                    raise RuntimeError(f"Deepseek API error after {self.max_attempts} attempts: {str(e)}")
+                    return None, None
                 time.sleep(self.retry_delay)
                 continue
     
-    def get_deepseek_sentiment(self, description: str) -> float :
+    def get_deepseek_sentiment(self, description: str) -> Tuple[Optional[str], Optional[float]]:
+        """
+        Get sentiment score from Deepseek model with retry logic.
+        Returns a tuple of (sentiment, score) or (None, None) if the sentiment couldn't be retrieved.
+        """
         agent_endpoint = os.getenv("AGENT_ENDPOINT")
         agent_key = os.getenv("AGENT_KEY")
         
@@ -128,10 +135,20 @@ class Reasoning:
                     json_match = re.search(r'\{[^{}]*\}', content)
                     if json_match:
                         json_str = json_match.group()
-                        result = json.loads(json_str)  # Parse JSON string to dict
-                        sentiment, score = next(iter(result.items()))
-                        
-                        return sentiment, score
+                        json_str_fixed = json_str.replace("'", '"')
+                        try:
+                            result = json.loads(json_str_fixed)  # Parse JSON string to dict
+                            sentiment, score = next(iter(result.items()))
+                            return sentiment, float(score)
+                        except json.JSONDecodeError:
+                            # If first attempt fails, try with ast.literal_eval
+                            try:
+                                result = ast.literal_eval(json_str)
+                                sentiment, score = next(iter(result.items()))
+                                return sentiment, float(score)
+                            except (ValueError, SyntaxError):
+                                # Continue to next retry if both parsing methods fail
+                                pass
                 
                 # If we didn't find JSON in the response, increment retry counter
                 retry_count += 1
@@ -139,52 +156,70 @@ class Reasoning:
                     time.sleep(1)  # Add a small delay between retries
                     continue
                 else:
-                    raise ValueError("Failed to get valid JSON response after 5 attempts")
+                    return None, None
                     
             except Exception as e:
                 retry_count += 1
                 if retry_count == max_retries:
-                    raise Exception(f"Failed after {max_retries} attempts. Error: {str(e)}")
+                    return None, None
                 time.sleep(1)  # Add a small delay between retries
                 continue
 
 
-    def calculate_weighted_sentiment(self, ollama_score: float, openai_score: float, trained_score: float) -> Tuple[str, float]:
+    def calculate_weighted_sentiment(self, ollama_score: Optional[float], openai_score: Optional[float], trained_score: float) -> float:
         """
         Calculate weighted sentiment score combining both models.
+        Adjusts weights if some scores are missing.
         """
-        weighted_score = (ollama_score * self.ollama_weight) + (openai_score * self.openai_weight) + (trained_score * self.trained_weight)
-
-        return weighted_score
+        # If trained_score is the only score available
+        if ollama_score is None and openai_score is None:
+            return trained_score
+            
+        # If ollama_score is missing but openai_score is available
+        elif ollama_score is None and openai_score is not None:
+            # Redistribute ollama weight to openai and trained
+            new_openai_weight = self.openai_weight + (self.ollama_weight * 0.6)
+            new_trained_weight = self.trained_weight + (self.ollama_weight * 0.4)
+            return (openai_score * new_openai_weight) + (trained_score * new_trained_weight)
+            
+        # If openai_score is missing but ollama_score is available
+        elif openai_score is None and ollama_score is not None:
+            # Redistribute openai weight to ollama and trained
+            new_ollama_weight = self.ollama_weight + (self.openai_weight * 0.6)
+            new_trained_weight = self.trained_weight + (self.openai_weight * 0.4)
+            return (ollama_score * new_ollama_weight) + (trained_score * new_trained_weight)
+            
+        # If all scores are available
+        else:
+            return (ollama_score * self.ollama_weight) + (openai_score * self.openai_weight) + (trained_score * self.trained_weight)
     
-    def predict_sentiment(self, description: str, trained_score: float) -> Tuple[str, float]:
+    def predict_sentiment(self, description: str, trained_score: float) -> Tuple[Optional[str], float]:
         """
         Predict market sentiment from text description using both models.
-        If Ollama fails to produce a score after `max_attempts`, we fall back
-        to averaging the OpenAI score and the trained score.
+        Handles cases where either model might fail to produce a score.
         """
+        # Get deepseek sentiment score
         deepseek_sentiment, deepseek_score = self.get_deepseek_sentiment(description)
+        print(f"Deepseek sentiment: {deepseek_sentiment}, score: {deepseek_score}")
                
-        # Next, retrieve the OpenAI score
+        # Get OpenAI sentiment score
         openai_sentiment, openai_score = self.get_openai_sentiment(description)
-        print(f"OpenAI score: {openai_score}")
+        print(f"OpenAI sentiment: {openai_sentiment}, score: {openai_score}")
         print(f"Trained score: {trained_score}")
     
-        # If Ollama score was not obtained after `max_attempts`, fallback to
-        # a 50–50 average of OpenAI score and trained score
-        if deepseek_score is None:
-            fallback_score = (0.6 * openai_score) + (0.4 * trained_score)
+        # Determine final sentiment
+        final_sentiment = None
+        if deepseek_sentiment is not None:
+            final_sentiment = deepseek_sentiment
+        if openai_sentiment is not None:
             final_sentiment = openai_sentiment
-            
-            return final_sentiment, fallback_score
-        else:
-            # If Ollama was successful, combine the three scores using your existing weights
-            weighted_score = self.calculate_weighted_sentiment(
-                deepseek_score,
-                openai_score,
-                trained_score
-            )
-            final_sentiment = openai_sentiment
+        
+        # Calculate weighted score based on available scores
+        weighted_score = self.calculate_weighted_sentiment(
+            deepseek_score,
+            openai_score,
+            trained_score
+        )
             
         return final_sentiment, weighted_score
 
@@ -196,10 +231,7 @@ class Reasoning:
     
 #     # Analyze a single text
 #     text = """
-#     The Arbitrum Growth Circle is a series of events aimed at accelerating the growth of the Arbitrum ecosystem by providing peer learning opportunities for builders, promoting best practices in development, and fostering collaboration among them. The events will consist of bi-weekly clinics focused on specific topics, with each clinic culminating in a final evaluation session to assess impact and gather feedback.
-#     The primary target audience is high-potential protocols that are relatively new to building in the Arbitrum ecosystem or are currently underserved. The events will be promoted through targeted outreach, direct engagement, referral networks, participant databases, and channel activations. Regular promotional content and participant success stories will also be shared via various channels to maintain visibility and drive engagement.
-#     The Arbitrum Growth Circle aligns with Arbitrum's mission by advancing ecosystem development, product excellence, and community strength. The events are expected to have a significant impact on the growth of Orbit chains, the adoption of Stylus, and the improvement of technical knowledge sharing within the ecosystem.
-#     A post-event Impact Report will be compiled, which will include an executive summary, detailed metrics, interpretation of the KPIs in relation to a Theory of Change / Logic Model, a value analysis, and recommendations for future improvements and scaling opportunities.
+#     This text discusses a proposal to onboard rstETH to the Aave V3 Prime instance on Ethereum. The proposal suggests that adding rstETH will bring additional synergies for all stakeholders, such as increased demand for wstETH borrowing and additional wstETH liquidity. Risk parameters are provided for rstETH in both E-Mode and non-E-Mode categories. The text encourages community feedback before moving forward with the proposal. No clear sentiment is expressed in the text itself, but it appears to be informative and neutral in nature.
 #     """
     
     

@@ -55,7 +55,7 @@ def scan_proposals():
                 try:
                     delete_live_trade(client)
                     proposal_dict = download_and_save_proposal(db, True)
-                    new_row_df = check_new_post(proposal_dict)   
+                    new_row_df = check_new_post(proposal_dict) 
             
                     trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo)
                     monitor.check_price()

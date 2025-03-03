@@ -76,7 +76,7 @@ def download_and_save_proposal(db, scan):
                         description = clean_content(doc['description'])
                         
                         try:
-                            discussion_link = doc['discussion_link']
+                            discussion_link = doc['post_url_link']
                         except Exception as e:
                             discussion_link = ''
                         
