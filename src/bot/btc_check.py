@@ -107,12 +107,12 @@ def btc_price_check():
     return False
 
 
-if __name__ == "__main__":
-    with open('config.json', 'r') as json_file:
-        config = json.load(json_file)
+# if __name__ == "__main__":
+#     with open('config.json', 'r') as json_file:
+#         config = json.load(json_file)
         
-    client = BinanceClient(config['API_KEY'], config['API_SECRET'])
-    btc_price_check()
+#     client = BinanceClient(config['API_KEY'], config['API_SECRET'])
+#     btc_price_check()
 
 
 
