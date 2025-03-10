@@ -88,7 +88,8 @@ def download_and_save_proposal(db, scan):
                             discourse_df = pd.concat([discourse_df, temp_df], ignore_index=True)
             
             except Exception as e:
-                print(doc)
+                # print("\n\n", doc)
+                # print("\n\n", e)
                 continue
                     
         proposal_dict[key] = discourse_df

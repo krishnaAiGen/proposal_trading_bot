@@ -69,6 +69,7 @@ def check_btc_price_drop(api_key, api_secret):
         twelve_hr_drop = ((twelve_hours_ago_price - current_price) / twelve_hours_ago_price) * 100
         twenty_four_hr_drop = ((twenty_four_hours_ago_price - current_price) / twenty_four_hours_ago_price) * 100
         
+        
         return {
             'current_price': current_price,
             '12h_ago_price': twelve_hours_ago_price,
