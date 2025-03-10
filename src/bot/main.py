@@ -139,9 +139,8 @@ def predict_final_sentiment(sentiment, sentimnet_score, sentiment_crypto, crypto
         return sentiment, sentimnet_score
     
 
-def trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo):    
-    if len(new_row_df) != 0 and not btc_price_check():
-    # if len(new_row_df) != 0:
+def trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo): 
+    if len(new_row_df) != 0:
         proposal_post_all = pd.read_csv(config['data_dir'] + '/proposal_post_all.csv', index_col=0)
         proposal_post_id = pd.read_csv(config['data_dir'] + '/proposal_post_id.csv', index_col=0)
         
@@ -198,7 +197,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo
             """
             taking trade from here
             """
-            if sentiment == 'positive' and sentimnet_score >= 0.80 and text_verify == 'genuine': 
+            if sentiment == 'positive' and sentimnet_score >= 0.80 and text_verify == 'genuine' and not btc_price_check(): 
                 #making an object for bullish and bearish price prediction
                 bullish_predictor = RobertaForRegressionBullish(config['bullish_dir'])
                 target_price = bullish_predictor.predict(summary)[0]
@@ -225,7 +224,7 @@ def trigger_trade(new_row_df, summary_obj, sentiment_analyzer, reasoning, dynamo
                         post_error_to_slack(f"Error saving to DynamoDB: {e}")
                         print("Continuing with remaining operations...")
                     
-            if sentiment == 'negative' and sentimnet_score >= 0.80 and text_verify == 'genuine':
+            if sentiment == 'negative' and sentimnet_score >= 0.80 and text_verify == 'genuine' and not btc_price_check():
                 #making an object for bullish and bearish price prediction
                 bearish_predictor = RobertaForRegressionBearish(model_path = config['bearish_dir'])
                 target_price = bearish_predictor.predict(summary)[0]
